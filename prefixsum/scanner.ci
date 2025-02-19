@@ -1,0 +1,26 @@
+mainmodule scanner
+{
+  readonly CProxy_Main mainProxy;
+  readonly int nChares;
+
+  mainchare Main
+  {
+    entry Main(CkArgMsg * m);
+    entry[reductiontarget] void initDone(void);
+    entry void done(void);
+    entry[reductiontarget] void exit(void);
+
+    entry[reductiontarget] void roundDone();
+    entry[reductiontarget] void ScanInRoundsReduction();
+    entry void ScanInRounds();
+  };
+
+  array[1D] Scanner
+  {
+    entry Scanner(void);
+    entry void scanSend(int round);
+    entry void scanRecv(int value, int round);
+    entry void verify(int data);
+    entry void setValue(int value);
+  };
+};
