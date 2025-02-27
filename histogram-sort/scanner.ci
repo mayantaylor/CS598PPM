@@ -1,0 +1,59 @@
+mainmodule scanner
+{
+  readonly CProxy_Main mainProxy;
+  readonly int nChares;
+
+  mainchare Main
+  {
+    entry Main(CkArgMsg * m);
+    entry[reductiontarget] void startHistRound(void);
+    entry void broadcastGlobal(void);
+    entry[reductiontarget] void exit(void);
+    entry[reductiontarget] void roundDone();
+    entry[reductiontarget] void ScanInRounds();
+    entry[reductiontarget] void startSends();
+  };
+
+  array[1D] Scanner
+  {
+    entry Scanner(int dataSize);
+    entry void verify();
+    entry void verifyFromLeft(int data);
+    entry void buildHist(int nBuckets, int round);
+    entry void sendGlobal();
+    entry void getGlobalHist(int hist[size], int size);
+    entry void recvItem(int item, int index);
+    entry void scanRecv(int values[size], int size, int round, int from);
+    entry void sendItems();
+    entry void scanSend(int round)
+    {
+      serial
+      {
+        // if you still have to send in round n: send
+        int potentialNbor = thisIndex + (1 << round);
+
+        if (potentialNbor < nChares)
+        {
+          thisProxy[potentialNbor].scanRecv(myScanValues, nBuckets, round, thisIndex); // why cant we use arrProxy here? this gives local branch error
+        }
+        // if you don't have to receive, contribute to reduction.
+        if (thisIndex < (1 << round))
+        {
+          CkCallback cbRoundDone(CkReductionTarget(Main, roundDone), mainProxy);
+          contribute(cbRoundDone);
+        }
+      };
+
+      when scanRecv(int value[size], int size, int round, int from)
+          serial
+      {
+        // process data, then contribute to reduction
+
+        std::transform(myScanValues, myScanValues + nBuckets, value, myScanValues, std::plus<int>());
+
+        CkCallback cbRoundDone(CkReductionTarget(Main, roundDone), mainProxy);
+        contribute(cbRoundDone);
+      };
+    };
+  }
+}

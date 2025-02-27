@@ -1,0 +1,36 @@
+Implementing histogram sort in Charm++
+
+Algorithmic Components:
+
+- generate random data from [0,100) on each simulated processor
+- build a local histogram
+- use a prefix sum to gather global histogram information
+- using prefix sum, compute destination for each element
+- send elements and insert on receive
+- results are verified by verifying local sorting and then communicating with left neighbor to verify
+  global ordering
+
+Usage:
+
+Charm++ programs can be run on many platforms (don't require MPI or cluster usage).
+
+- install Charm++ (https://charm.readthedocs.io/en/latest/quickstart.html)
+- make
+- charmrun +p<nprocs> ./scanner <nchares> <ndata>
+- optionally use ++local if you want to run this on a laptop
+
+Arguments:
+
+- nchares: number of chares to use (simulated processors, overdecomposition). Each proc is assigned 10 items to sort.
+- nprocs: number of processors to use.
+- ndata: number of data points to sort per simulated processor.
+
+Future work:
+This implementation is the first step for radix sort. Radix sort can be done in parallel
+by iterating this process (didn't get this fully working in time for this assignment).
+
+Notes on Charm++:
+
+- using SDAG is necessary for the prefix sum because...
+  scanRecv from my left neighbor cannot arrive before I process scanSend. Complication
+  of asynchronous message passing.
