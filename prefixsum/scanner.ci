@@ -18,9 +18,38 @@ mainmodule scanner
   array[1D] Scanner
   {
     entry Scanner(void);
-    entry void scanSend(int round);
-    entry void scanRecv(int value, int round);
     entry void verify(int data);
     entry void setValue(int value);
+    entry void scanRecv(int value, int round, int from);
+    entry void scanSend(int round)
+    {
+      serial
+      {
+        // if you still have to send in round n: send
+        int potentialNbor = thisIndex + (1 << round);
+
+        if (potentialNbor < nChares)
+        {
+          thisProxy[potentialNbor].scanRecv(myScanValue, round, thisIndex); // why cant we use arrProxy here? this gives local branch error
+        }
+        // if you don't have to receive, contribute to reduction.
+        if (thisIndex < (1 << round))
+        {
+          CkCallback cbRoundDone(CkReductionTarget(Main, roundDone), mainProxy);
+          contribute(cbRoundDone);
+        }
+      };
+
+      when scanRecv(int value, int round, int from)
+          serial
+      {
+        // process data, then contribute to reduction
+
+        myScanValue = myScanValue + value;
+
+        CkCallback cbRoundDone(CkReductionTarget(Main, roundDone), mainProxy);
+        contribute(cbRoundDone);
+      };
+    };
   };
 };

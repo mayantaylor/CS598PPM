@@ -106,7 +106,7 @@ public:
 class Scanner : public CBase_Scanner
 {
 public:
-  int myScanValue;
+  Scanner_SDAG_CODE int myScanValue;
   int myStartValue;
 
   int numUpdates;
@@ -133,36 +133,6 @@ public:
     }
 
     CkCallback cb(CkIndex_Main::ScanInRoundsReduction(), mainProxy);
-    contribute(cb);
-  }
-
-  void scanSend(int round)
-  {
-    // if you still have to send in round n: send
-    int potentialNbor = thisIndex + (1 << round);
-    if (potentialNbor < nChares)
-    {
-      // CkPrintf("Chare %d: Sending %d to %d in round %d\n", thisIndex, myScanValue, potentialNbor, round);
-      thisProxy[potentialNbor].scanRecv(myScanValue, round); // why cant we use arrProxy here? this gives local branch error
-    }
-
-    // if you don't have to receive, contribute to reduction.
-    if (thisIndex < (1 << round))
-    {
-      // CkPrintf("Chare %d doesn't receive in round %d\n", thisIndex, round);
-      thisProxy[thisIndex].scanRecv(0, round);
-    }
-  }
-
-  void scanRecv(int value, int round)
-  {
-
-    lastRound = round;
-    // process data, then contribute to reduction
-    myScanValue += value;
-    numUpdates++;
-
-    CkCallback cb(CkIndex_Main::roundDone(), mainProxy);
     contribute(cb);
   }
 

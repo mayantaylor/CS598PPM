@@ -1,6 +1,3 @@
 Implementing prefix sum in charm++
 
-Lots of bugs: hard to debug becaue less well maintained
-Also: lots of callbacks.
-
-
+Using SDAG: necessary because scanRecv from my left neighbor cannot arrive before I process scanSend.
