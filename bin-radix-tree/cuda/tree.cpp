@@ -5,14 +5,23 @@
 #include <ctime>
 #include <assert.h>
 #include <queue>
+#include <bitset>
+
+#include "cuda_runtime.h"
 
 struct Node
 {
     bool isLeaf;
     int data;
-    Node *left;
-    Node *right;
+
+    int left;
+    bool leftIsLeaf;
+
+    int right;
+    bool rightIsLeaf;
 };
+
+void buildInternalNodes(std::vector<int> &randomInts, std::vector<Node> &internalNodes, std::vector<Node> &leaves);
 
 int sign(int x)
 {
@@ -39,16 +48,6 @@ int commonPrefixLength(int x, int y)
     return maxLen - cpl;
 }
 
-int computeCPL(std::vector<int> &randomInts, int i, int j)
-{
-    assert(i >= 0 && i < randomInts.size());
-
-    if (j >= randomInts.size() || j < 0)
-        return -1;
-
-    return commonPrefixLength(randomInts[i], randomInts[j]);
-}
-
 void testCommonPrefixLength()
 {
     assert(commonPrefixLength(0b11100, 0b11110) == 3);
@@ -67,68 +66,42 @@ void testSign()
     std::cout << "sign tests passed!" << std::endl;
 }
 
-void buildInternalNodes(std::vector<int> &randomInts, std::vector<Node> &internalNodes, std::vector<Node> &leaves)
+void printTree(std::vector<Node> &internalNodes)
 {
-    for (int i = 0; i < internalNodes.size(); i++)
+    std::queue<int> q;
+    q.push(0);
+
+    while (!q.empty())
     {
+        int nodeIndex = q.front();
+        q.pop();
 
-        // determine range direction
-        int d = sign(computeCPL(randomInts, i, i + 1) - computeCPL(randomInts, i, i - 1));
+        Node &node = internalNodes[nodeIndex];
 
-        int minCPL = computeCPL(randomInts, i, i - d);
+        std::cout << "Node " << nodeIndex << ": ";
+        std::cout << "data = " << node.data << ", ";
 
-        // determine range extent
-        int ub = i;
-        while (computeCPL(randomInts, i, ub + d) > minCPL)
+        if (node.leftIsLeaf)
         {
-            ub += d;
+            std::cout << "left = Leaf(" << node.left << "), ";
+        }
+        else
+        {
+            std::cout << "left = Internal(" << node.left << "), ";
+            q.push(node.left);
         }
 
-        int dNode = computeCPL(randomInts, i, ub);
-
-        // find split point
-        int s = 0;
-        while (computeCPL(randomInts, i, i + (s + 1) * d) > dNode)
+        if (node.rightIsLeaf)
         {
-            s++;
+            std::cout << "right = Leaf(" << node.right << ")";
+        }
+        else
+        {
+            std::cout << "right = Internal(" << node.right << ")";
+            q.push(node.right);
         }
 
-        int y = i + s * d + std::min(d, 0);
-
-        // assign left and right children
-        Node *left = &internalNodes[y];
-        Node *right = &internalNodes[y + 1];
-        if (std::min(i, ub) == y)
-            left = &leaves[y];
-
-        if (std::max(i, ub) == y + 1)
-            right = &leaves[y + 1];
-
-        Node internalNode = {false, i, left, right};
-        internalNodes[i].data = i;
-        internalNodes[i].left = left;
-        internalNodes[i].right = right;
-    }
-}
-
-void printTree(Node *root, int level, int maxLevel)
-{
-    if (!root)
-    {
-        return;
-    }
-
-    for (int i = 0; i < level; i++)
-        std::cout << "   ";
-    if (root->isLeaf)
-        std::cout << std::bitset<5>(root->data) << " (leaf)" << std::endl;
-    else
-        std::cout << root->data << std::endl;
-
-    if (level < maxLevel)
-    {
-        printTree(root->left, level + 1, maxLevel);
-        printTree(root->right, level + 1, maxLevel);
+        std::cout << std::endl;
     }
 }
 
@@ -155,43 +128,27 @@ void initializeLeaves(std::vector<int> &randomInts, std::vector<Node> &leaves, i
 
     for (const int &num : randomInts)
     {
-        Node leaf = {true, num, nullptr, nullptr};
+        Node leaf = {true, num, -1, NULL, -1, NULL};
         leaves.push_back(leaf);
     }
 }
 
-void testTreeBuild()
+int main(int argc, char **argv)
 {
-    std::vector<int> randomInts = {0b00001, 0b00010, 0b00100, 0b00101, 0b10011, 0b11000, 0b11001, 0b11110};
-    std::vector<Node> leaves;
-
-    initializeLeaves(randomInts, leaves, 5);
-
-    int nleaves = leaves.size();
-    int ninternal = nleaves - 1;
-
-    std::vector<Node> internalNodes;
-
-    for (int i = 0; i < ninternal; i++)
+    if (argc != 2)
     {
-        Node internalNode = {false, i, nullptr, nullptr};
-        internalNodes.push_back(internalNode);
+        std::cerr << "Usage: ./tree <number of random numbers>" << std::endl;
+        return 1;
     }
 
-    buildInternalNodes(randomInts, internalNodes, leaves);
+    int n = atoi(argv[1]); // number of random numbers (leaves)
 
-    assert(internalNodes[0].left->data == 3);
-    assert(internalNodes[0].right->data == 4);
-    assert(internalNodes[1].left->data == 0b00001);
+    if (n < 2)
+    {
+        std::cerr << "Number of random numbers must be greater than 1" << std::endl;
+        return 1;
+    }
 
-    // printTree(&internalNodes[0], 0, ninternal);
-
-    std::cout << "testTreeBuild passed!" << std::endl;
-}
-
-int main()
-{
-    int n = 8;     // number of random numbers (leaves)
     int nBits = 5; // number of bits in each random number
 
     std::srand(std::time(nullptr)); // use current time as seed for random generator
@@ -202,7 +159,6 @@ int main()
     std::cout << "Testing support functionality..." << std::endl;
     testCommonPrefixLength();
     testSign();
-    testTreeBuild();
     std::cout << "---------------" << std::endl;
 
     std::cout << "Generating random numbers with " << nBits << " bits" << std::endl;
@@ -217,13 +173,13 @@ int main()
 
     for (int i = 0; i < ninternal; i++)
     {
-        Node internalNode = {false, i, nullptr, nullptr};
+        Node internalNode = {false, i, -1, NULL, -1, NULL};
         internalNodes.push_back(internalNode);
     }
 
     buildInternalNodes(randomInts, internalNodes, leaves);
 
-    printTree(&internalNodes[0], 0, ninternal);
+    printTree(internalNodes);
 
     return 0;
 }

@@ -1,0 +1,1 @@
+The cuda implementation is relatively straightforward because the algorithm provides embarrassing parallelism. The code must be compiled using nvcc and run on a GPU equiped machine. I developed this code on a Slurm cluster (Delta).
